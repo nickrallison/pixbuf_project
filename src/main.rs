@@ -15,7 +15,7 @@ fn main() {
     const KILL_RATE: f32 = 0.062;
 
     const A_DIFFUSE: f32 = 1.0;
-    const B_DIFFUSE: f32 = 0.35;
+    const B_DIFFUSE: f32 = 0.45;
 
     const TIME_STEP: f32 = 1.0;
 
@@ -37,8 +37,8 @@ fn main() {
         panic!("{}", e);
     });
 
-    // Limit to max ~60 fps update rate
-    window.set_target_fps(60);
+    // Limit to max ~480 fps update rate
+    window.set_target_fps(480);
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // Convert the frame buffer to a format minifb understands
