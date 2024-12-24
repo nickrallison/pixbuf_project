@@ -1,197 +1,125 @@
 use crate::frame::{Frame, Pixel};
-use rand::{Rng, SeedableRng};
 
 pub trait LoopState {
     fn update(self) -> Self;
     fn draw<const W: usize, const H: usize>(&self, frame: Frame<W, H>) -> Frame<W, H>;
 }
 
-struct Field<const W: usize, const H: usize> {
-    cells: Vec<f32>,
-}
-
-impl<const W: usize, const H: usize> Field<W, H> {
-    fn new() -> Self {
-        Self {
-            cells: vec![0.0; W * H],
-        }
-    }
-
-    fn get_cell(&self, x: usize, y: usize) -> Option<f32> {
-        if x < W && y < H {
-            Some(self.cells[y * W + x])
-        } else {
-            None
-        }
-    }
-
-    fn set_cell(&mut self, x: usize, y: usize, value: f32) -> Option<()> {
-        if x < W && y < H {
-            self.cells[y * W + x] = value;
-            Some(())
-        } else {
-            None
-        }
-    }
-
-    fn laplacian(&self, x: usize, y: usize) -> Option<f32> {
-        let mut sum = 0.0;
-
-        if x < W && y < H {
-            let mut weight: f32 = 0.0;
-            if x != 0 {
-                sum += self.get_cell(x - 1, y).unwrap_or(0.0) * 0.2;
-                weight += -0.2;
-            }
-            if let Some(value) = self.get_cell(x + 1, y) {
-                sum += value * 0.2;
-                weight += -0.2;
-            }
-            if y != 0 {
-                sum += self.get_cell(x, y - 1).unwrap_or(0.0) * 0.2;
-                weight += -0.2;
-            }
-            if let Some(value) = self.get_cell(x, y + 1) {
-                sum += value * 0.2;
-                weight += -0.2;
-            }
-
-            if x != 0 && y != 0 {
-                sum += self.get_cell(x - 1, y - 1).unwrap_or(0.0) * 0.05;
-                weight += -0.05;
-            }
-            if x != 0 && y != H - 1 {
-                sum += self.get_cell(x - 1, y + 1).unwrap_or(0.0) * 0.05;
-                weight += -0.05;
-            }
-
-            if x != W - 1 && y != 0 {
-                sum += self.get_cell(x + 1, y - 1).unwrap_or(0.0) * 0.05;
-                weight += -0.05;
-            }
-            if x != W - 1 && y != H - 1 {
-                sum += self.get_cell(x + 1, y + 1).unwrap_or(0.0) * 0.05;
-                weight += -0.05;
-            }
-
-            sum += self.get_cell(x, y).unwrap_or(0.0) * weight;
-            Some(sum)
-        } else {
-            None
-        }
-    }
-}
-
-pub struct ExampleLoopState<const W: usize, const H: usize> {
+pub struct ReactionDiffusion {
+    width: usize,
+    height: usize,
+    a: Vec<f32>,
+    b: Vec<f32>,
     feed_rate: f32,
     kill_rate: f32,
-
-    diffuse_a: f32,
-    diffuse_b: f32,
-
-    time_step: f32,
-
-    chem_a: Field<W, H>, // chem_a
-    chem_b: Field<W, H>, // chem_b
-
-    rng: rand::rngs::StdRng, // SeedableRng
+    diffusion_a: f32,
+    diffusion_b: f32,
+    delta_t: f32,
 }
 
-impl<const W: usize, const H: usize> ExampleLoopState<W, H> {
-    pub fn new(
-        feed_rate: f32,
-        kill_rate: f32,
-        diffuse_a: f32,
-        diffuse_b: f32,
-        time_step: f32,
-        seed: u64,
-    ) -> Self {
-        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let mut chem_a = Field::<W, H>::new();
-        chem_a.cells.fill_with(|| 1.0);
+impl ReactionDiffusion {
+    pub fn new(width: usize, height: usize, feed_rate: f32, kill_rate: f32) -> Self {
+        let size = width * height;
+        let mut a = vec![1.0; size];
+        let mut b = vec![0.0; size];
 
-        let mut chem_b = Field::<W, H>::new();
-        chem_b.cells.fill_with(|| 0.0);
-
-        // find a random cell in B and set it and neightbours to 1.0
-        let (x, y) = (rng.gen_range(0..W), rng.gen_range(0..H));
-
-        chem_b.set_cell(x, y, 1.0);
-        chem_b.set_cell(x - 1, y, 1.0);
-        chem_b.set_cell(x + 1, y, 1.0);
-        chem_b.set_cell(x, y - 1, 1.0);
-        chem_b.set_cell(x, y + 1, 1.0);
-
-        Self {
-            feed_rate,
-            kill_rate,
-
-            diffuse_a,
-            diffuse_b,
-
-            time_step,
-
-            chem_a,
-            chem_b,
-
-            rng,
-        }
-    }
-}
-
-impl<const WIDTH: usize, const HEIGHT: usize> LoopState for ExampleLoopState<WIDTH, HEIGHT> {
-    fn update(mut self) -> Self {
-        // Temporary fields to store the updated concentrations
-        let mut new_chem_a = Field::<WIDTH, HEIGHT>::new();
-        let mut new_chem_b = Field::<WIDTH, HEIGHT>::new();
-
-        for y in 0..HEIGHT {
-            for x in 0..WIDTH {
-                // Get current concentrations
-                let a = self.chem_a.get_cell(x, y).unwrap_or(0.0);
-                let b = self.chem_b.get_cell(x, y).unwrap_or(0.0);
-
-                // Calculate the Laplacian for diffusion
-                let laplacian_a = self.chem_a.laplacian(x, y).unwrap_or(0.0);
-                let laplacian_b = self.chem_b.laplacian(x, y).unwrap_or(0.0);
-
-                // Gray-Scott reaction-diffusion equations
-                let reaction = a * b * b;
-                let new_a = a
-                    + (self.diffuse_a * laplacian_a - reaction + self.feed_rate * (1.0 - a))
-                        * self.time_step;
-                let new_b = b
-                    + (self.diffuse_b * laplacian_b + reaction
-                        - (self.kill_rate + self.feed_rate) * b)
-                        * self.time_step;
-
-                // Update the new concentrations
-                new_chem_a.set_cell(x, y, new_a);
-                new_chem_b.set_cell(x, y, new_b);
+        // Initialize a small area with B=1
+        let center_x = width / 2;
+        let center_y = height / 2;
+        let radius = 10;
+        for y in (center_y.saturating_sub(radius))..(center_y + radius) {
+            for x in (center_x.saturating_sub(radius))..(center_x + radius) {
+                let dx = x as isize - center_x as isize;
+                let dy = y as isize - center_y as isize;
+                if dx * dx + dy * dy < (radius * radius) as isize {
+                    b[y * width + x] = 1.0;
+                }
             }
         }
 
-        // Update the fields with the new concentrations
-        self.chem_a = new_chem_a;
-        self.chem_b = new_chem_b;
+        ReactionDiffusion {
+            width,
+            height,
+            a,
+            b,
+            feed_rate,
+            kill_rate,
+            diffusion_a: 1.0,
+            diffusion_b: 0.5,
+            delta_t: 1.0,
+        }
+    }
 
-        self
+    fn laplacian(&self, grid: &Vec<f32>, x: usize, y: usize) -> f32 {
+        let mut sum = 0.0;
+        let index = y * self.width + x;
+        let neighbors = [
+            (0, 0, -1.0), // center
+            (-1, 0, 0.2),
+            (1, 0, 0.2), // left, right
+            (0, -1, 0.2),
+            (0, 1, 0.2), // top, bottom
+            (-1, -1, 0.05),
+            (1, -1, 0.05), // top-left, top-right
+            (-1, 1, 0.05),
+            (1, 1, 0.05), // bottom-left, bottom-right
+        ];
+
+        for &(dx, dy, weight) in &neighbors {
+            let nx = (x as isize + dx).clamp(0, (self.width - 1) as isize) as usize;
+            let ny = (y as isize + dy).clamp(0, (self.height - 1) as isize) as usize;
+            sum += grid[ny * self.width + nx] * weight;
+        }
+
+        sum
+    }
+}
+
+impl LoopState for ReactionDiffusion {
+    fn update(self) -> Self {
+        let mut new_a = self.a.clone();
+        let mut new_b = self.b.clone();
+
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let index = y * self.width + x;
+                let a = self.a[index];
+                let b = self.b[index];
+
+                let reaction = a * b * b;
+                let laplacian_a = self.laplacian(&self.a, x, y);
+                let laplacian_b = self.laplacian(&self.b, x, y);
+
+                new_a[index] = a
+                    + (self.diffusion_a * laplacian_a - reaction + self.feed_rate * (1.0 - a))
+                        * self.delta_t;
+                new_b[index] = b
+                    + (self.diffusion_b * laplacian_b + reaction
+                        - (self.kill_rate + self.feed_rate) * b)
+                        * self.delta_t;
+            }
+        }
+
+        ReactionDiffusion {
+            a: new_a,
+            b: new_b,
+            ..self
+        }
     }
 
     fn draw<const W: usize, const H: usize>(&self, mut frame: Frame<W, H>) -> Frame<W, H> {
-        for y in 0..H {
-            for x in 0..W {
-                let b = self.chem_b.get_cell(x, y).unwrap_or(0.0);
-                let b_color = (b * 255.0) as u8;
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let index = y * self.width + x;
+                let a = self.a[index];
+                let b = self.b[index];
 
-                let a = self.chem_a.get_cell(x, y).unwrap_or(0.0);
-                let a_color = (a * 255.0) as u8;
-
-                // Map the concentration to a grayscale value
-                let pixel = Pixel::new(255, a_color, 0, b_color);
+                let color_value = ((1.0 - a) * 255.0) as u8;
+                let pixel = Pixel::new(255, color_value, color_value, color_value);
                 frame.set_pixel(x, y, pixel);
             }
         }
+
         frame
     }
 }

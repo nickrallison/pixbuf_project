@@ -3,7 +3,7 @@
 mod eventloop;
 mod frame;
 
-use crate::eventloop::{ExampleLoopState, LoopState};
+use crate::eventloop::{LoopState, ReactionDiffusion};
 use crate::frame::{Frame, Pixel};
 use minifb::{Key, Window, WindowOptions};
 
@@ -22,9 +22,7 @@ fn main() {
     const SEED: u64 = 1;
 
     let mut frame = Frame::<WIDTH, HEIGHT>::new();
-    let mut loopstate = ExampleLoopState::<WIDTH, HEIGHT>::new(
-        FILL_RATE, KILL_RATE, A_DIFFUSE, B_DIFFUSE, TIME_STEP, SEED,
-    );
+    let mut loopstate = ReactionDiffusion::new(WIDTH, HEIGHT, FILL_RATE, KILL_RATE);
     frame = loopstate.draw::<WIDTH, HEIGHT>(frame);
 
     let mut window = Window::new(
