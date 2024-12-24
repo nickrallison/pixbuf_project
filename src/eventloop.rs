@@ -1,6 +1,4 @@
 use crate::frame::{Frame, Pixel};
-use rand::prelude::StdRng;
-use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 
 pub trait LoopState {
@@ -29,6 +27,9 @@ impl ReactionDiffusion {
         a_diffusion: f32,
         b_diffusion: f32,
         delta_t: f32,
+        start_x: usize,
+        start_y: usize,
+        rad: usize,
         seed: u64,
     ) -> Self {
         let size = width * height;
@@ -36,10 +37,7 @@ impl ReactionDiffusion {
         let mut b = vec![0.0; size];
 
         // Initialize a small area with B=1
-        let mut rng = StdRng::seed_from_u64(seed);
-        let start_x = rng.random_range(0..width);
-        let start_y = rng.random_range(0..height);
-        let radius = 10;
+        let radius = rad;
         for y in (start_y.saturating_sub(radius))..(start_y + radius) {
             for x in (start_x.saturating_sub(radius))..(start_x + radius) {
                 let dx = x as isize - start_x as isize;

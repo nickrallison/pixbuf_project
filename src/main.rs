@@ -17,13 +17,18 @@ fn main() {
     const A_DIFFUSE: f32 = 1.0;
     const B_DIFFUSE: f32 = 0.40;
 
+    const START_X: usize = WIDTH / 2;
+    const START_Y: usize = HEIGHT / 2;
+    const RAD: usize = 30;
+
     const TIME_STEP: f32 = 1.0;
 
     const SEED: u64 = 1;
 
     let mut frame = Frame::<WIDTH, HEIGHT>::new();
     let mut loopstate = ReactionDiffusion::new(
-        WIDTH, HEIGHT, FILL_RATE, KILL_RATE, A_DIFFUSE, B_DIFFUSE, TIME_STEP, SEED,
+        WIDTH, HEIGHT, FILL_RATE, KILL_RATE, A_DIFFUSE, B_DIFFUSE, TIME_STEP, START_X, START_Y,
+        RAD, SEED,
     );
     frame = loopstate.draw::<WIDTH, HEIGHT>(frame);
 
