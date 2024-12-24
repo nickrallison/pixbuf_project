@@ -1,6 +1,7 @@
 #![feature(generic_const_exprs)]
 
 mod frame;
+mod eventloop;
 
 use minifb::{Key, Window, WindowOptions};
 use crate::frame::{Frame, Pixel};
@@ -39,7 +40,7 @@ fn main() {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // Convert the frame buffer to a format minifb understands
         let buffer: Vec<u32> = frame.get_pixels();
-
+        
         // Update the window with the buffer
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
     }
