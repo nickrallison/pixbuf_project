@@ -27,7 +27,7 @@ impl crate::Pixel {
 }
 
 pub struct Frame<const W: usize, const H: usize> {
-    pixels: Vec<crate::Pixel>,
+    pub(crate) pixels: Vec<crate::Pixel>,
 }
 
 impl<const W: usize, const H: usize> crate::Frame<W, H> {

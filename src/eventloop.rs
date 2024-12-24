@@ -1,6 +1,7 @@
 use crate::frame::{Frame, Pixel};
 use rand::prelude::StdRng;
 use rand::{Rng, SeedableRng};
+use rayon::prelude::*;
 
 pub trait LoopState {
     fn update(self) -> Self;
@@ -87,30 +88,41 @@ impl ReactionDiffusion {
     }
 }
 
+use rayon::prelude::*;
+
 impl LoopState for ReactionDiffusion {
     fn update(self) -> Self {
         let mut new_a = self.a.clone();
         let mut new_b = self.b.clone();
 
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let index = y * self.width + x;
+        let width = self.width;
+        let height = self.height;
+        let a_diffusion = self.a_diffusion;
+        let b_diffusion = self.b_diffusion;
+        let feed_rate = self.feed_rate;
+        let kill_rate = self.kill_rate;
+        let delta_t = self.delta_t;
+
+        // Create a range of indices and parallelize over it
+        new_a
+            .par_iter_mut()
+            .zip(new_b.par_iter_mut())
+            .enumerate()
+            .for_each(|(index, (new_a_val, new_b_val))| {
+                let x = index % width;
+                let y = index / width;
                 let a = self.a[index];
                 let b = self.b[index];
-
                 let reaction = a * b * b;
                 let laplacian_a = self.laplacian(&self.a, x, y);
                 let laplacian_b = self.laplacian(&self.b, x, y);
 
-                new_a[index] = a
-                    + (self.a_diffusion * laplacian_a - reaction + self.feed_rate * (1.0 - a))
-                        * self.delta_t;
-                new_b[index] = b
-                    + (self.b_diffusion * laplacian_b + reaction
-                        - (self.kill_rate + self.feed_rate) * b)
-                        * self.delta_t;
-            }
-        }
+                *new_a_val =
+                    a + (a_diffusion * laplacian_a - reaction + feed_rate * (1.0 - a)) * delta_t;
+                *new_b_val = b
+                    + (b_diffusion * laplacian_b + reaction - (kill_rate + feed_rate) * b)
+                        * delta_t;
+            });
 
         ReactionDiffusion {
             a: new_a,
@@ -120,17 +132,18 @@ impl LoopState for ReactionDiffusion {
     }
 
     fn draw<const W: usize, const H: usize>(&self, mut frame: Frame<W, H>) -> Frame<W, H> {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let index = y * self.width + x;
+        let width = self.width;
+
+        frame
+            .pixels
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(index, pixel)| {
                 let a = self.a[index];
                 let b = self.b[index];
-
                 let color_value = ((1.0 - b) * 255.0) as u8;
-                let pixel = Pixel::new(255, color_value, color_value, color_value);
-                frame.set_pixel(x, y, pixel);
-            }
-        }
+                *pixel = Pixel::new(255, color_value, color_value, color_value);
+            });
 
         frame
     }

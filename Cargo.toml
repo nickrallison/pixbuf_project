@@ -7,6 +7,7 @@ edition = "2021"
 chrono = "0.4.39"
 minifb = "0.27.0"
 rand = "0.9.0-beta.1"
+rayon = "1.10.0"
 
 [profile.release]
 lto = true
