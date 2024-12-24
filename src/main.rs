@@ -4,6 +4,7 @@ mod frame;
 mod eventloop;
 
 use minifb::{Key, Window, WindowOptions};
+use crate::eventloop::{ExampleLoopState, LoopState};
 use crate::frame::{Frame, Pixel};
 
 fn main() {
@@ -11,18 +12,8 @@ fn main() {
     const HEIGHT: usize = 600;
 
     let mut frame = Frame::<WIDTH, HEIGHT>::new();
-
-    // Create a simple pattern
-    for y in 0..HEIGHT {
-        for x in 0..WIDTH {
-            let a = (x % 256) as u8;
-            let r = (y % 256) as u8;
-            let g = ((x + y) % 256) as u8;
-            let b = ((x + y) % 256) as u8;
-            let pixel = Pixel::new(a, r, g, b);
-            frame.set_pixel(x, y, pixel);
-        }
-    }
+    let loopstate = ExampleLoopState {};
+    frame = loopstate.draw::<WIDTH, HEIGHT>(frame);
 
     let mut window = Window::new(
         "Pixel Buffer - ESC to exit",
@@ -40,7 +31,7 @@ fn main() {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // Convert the frame buffer to a format minifb understands
         let buffer: Vec<u32> = frame.get_pixels();
-        
+
         // Update the window with the buffer
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
     }
