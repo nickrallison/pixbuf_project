@@ -6,40 +6,176 @@ pub trait LoopState {
     fn draw<const W: usize, const H: usize>(&self, frame: Frame<W, H>) -> Frame<W, H>;
 }
 
+struct Field<const W: usize, const H: usize> {
+    cells: Vec<f32>,
+}
+
+impl<const W: usize, const H: usize> Field<W, H> {
+    fn new() -> Self {
+        Self {
+            cells: vec![0.0; W * H],
+        }
+    }
+
+    fn get_cell(&self, x: usize, y: usize) -> Option<f32> {
+        if x < W && y < H {
+            Some(self.cells[y * W + x])
+        } else {
+            None
+        }
+    }
+
+    fn set_cell(&mut self, x: usize, y: usize, value: f32) -> Option<()> {
+        if x < W && y < H {
+            self.cells[y * W + x] = value;
+            Some(())
+        } else {
+            None
+        }
+    }
+
+    fn laplacian(&self, x: usize, y: usize) -> Option<f32> {
+        let mut sum = 0.0;
+
+        if x < W && y < H {
+            // Center cell with weight -4
+            sum += self.get_cell(x, y).unwrap_or(0.0) * -4.0;
+
+            let mut weight = 0;
+            // Neighbors with weight 1
+            // if let Some(value) = self.get_cell(x  - 1, y) {
+            //     sum += value;
+            //     weight += 1;
+            // }
+            if x != 0 {
+                sum += self.get_cell(x - 1, y).unwrap_or(0.0) * 1.0;
+                weight += 1;
+            }
+            if let Some(value) = self.get_cell(x + 1, y) {
+                sum += value;
+                weight += 1;
+            }
+            // if let Some(value) = self.get_cell(x, y - 1) {
+            //     sum += value;
+            //     weight += 1;
+            // }
+            if y != 0 {
+                sum += self.get_cell(x, y - 1).unwrap_or(0.0) * 1.0;
+                weight += 1;
+            }
+            if let Some(value) = self.get_cell(x, y + 1) {
+                sum += value;
+                weight += 1;
+            }
+            sum += self.get_cell(x, y).unwrap_or(0.0) * -(weight as f32);
+            Some(sum)
+        } else {
+            None
+        }
+    }
+}
+
 pub struct ExampleLoopState<const W: usize, const H: usize> {
-    chem_a: Vec<f32>,
-    chem_b: Vec<f32>,
+    feed_rate: f32,
+    kill_rate: f32,
+
+    diffuse_a: f32,
+    diffuse_b: f32,
+
+    time_step: f32,
+
+    chem_a: Field<W, H>, // chem_a
+    chem_b: Field<W, H>, // chem_b
+
+    rng: rand::rngs::StdRng, // SeedableRng
 }
 
 impl<const W: usize, const H: usize> ExampleLoopState<W, H> {
-    pub fn new() -> Self {
-        let chem_a: Vec<f32> = vec![0.0; W * H];
-        let chem_b: Vec<f32> = vec![0.0; W * H];
-        Self { chem_a, chem_b }
-    }
-
-    pub fn new_seeded(seed: u64) -> Self {
+    pub fn new(
+        feed_rate: f32,
+        kill_rate: f32,
+        diffuse_a: f32,
+        diffuse_b: f32,
+        time_step: f32,
+        seed: u64,
+    ) -> Self {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let chem_a: Vec<f32> = (0..W * H).map(|_| rng.gen_range(0.0..1.0)).collect();
-        let chem_b: Vec<f32> = (0..W * H).map(|_| rng.gen_range(0.0..1.0)).collect();
-        Self { chem_a, chem_b }
+        let mut chem_a = Field::<W, H>::new();
+        chem_a.cells.fill_with(|| rng.gen_range(0.0..1.0));
+
+        let mut chem_b = Field::<W, H>::new();
+        chem_b.cells.fill_with(|| rng.gen_range(0.0..1.0));
+
+        Self {
+            feed_rate,
+            kill_rate,
+
+            diffuse_a,
+            diffuse_b,
+
+            time_step,
+
+            chem_a,
+            chem_b,
+
+            rng,
+        }
     }
 }
 
-// Add the generic parameters to the `ExampleLoopState` struct in the trait implementation
 impl<const WIDTH: usize, const HEIGHT: usize> LoopState for ExampleLoopState<WIDTH, HEIGHT> {
-    fn update(self) -> Self {
+    fn update(mut self) -> Self {
+        // Constants for the Gray-Scott model
+        let d_a = 1.0; // Diffusion rate for chemical A
+        let d_b = 0.5; // Diffusion rate for chemical B
+        let delta_t = 1.0; // Time step
+
+        // Temporary fields to store the updated concentrations
+        let mut new_chem_a = Field::<WIDTH, HEIGHT>::new();
+        let mut new_chem_b = Field::<WIDTH, HEIGHT>::new();
+
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
+                // Get current concentrations
+                let a = self.chem_a.get_cell(x, y).unwrap_or(0.0);
+                let b = self.chem_b.get_cell(x, y).unwrap_or(0.0);
+
+                // Calculate the Laplacian for diffusion
+                let laplacian_a = self.chem_a.laplacian(x, y).unwrap_or(0.0);
+                let laplacian_b = self.chem_b.laplacian(x, y).unwrap_or(0.0);
+
+                // Gray-Scott reaction-diffusion equations
+                let reaction = a * b * b;
+                let new_a = a
+                    + (self.diffuse_a * laplacian_a - reaction + self.feed_rate * (1.0 - a))
+                        * self.time_step;
+                let new_b = b
+                    + (self.diffuse_b * laplacian_b + reaction
+                        - (self.kill_rate + self.feed_rate) * b)
+                        * self.time_step;
+
+                // Update the new concentrations
+                new_chem_a.set_cell(x, y, new_a);
+                new_chem_b.set_cell(x, y, new_b);
+            }
+        }
+
+        // Update the fields with the new concentrations
+        self.chem_a = new_chem_a;
+        self.chem_b = new_chem_b;
+
         self
     }
 
     fn draw<const W: usize, const H: usize>(&self, mut frame: Frame<W, H>) -> Frame<W, H> {
         for y in 0..H {
             for x in 0..W {
-                let a = (x % 256) as u8;
-                let r = (y % 256) as u8;
-                let g = ((x + y) % 256) as u8;
-                let b = ((x + y) % 256) as u8;
-                let pixel = Pixel::new(a, r, g, b);
+                // Get the concentration of chemical B for visualization
+                let b = self.chem_b.get_cell(x, y).unwrap_or(0.0);
+
+                // Map the concentration to a grayscale value
+                let intensity = (b * 255.0) as u8;
+                let pixel = Pixel::new(intensity, intensity, intensity, 255);
                 frame.set_pixel(x, y, pixel);
             }
         }

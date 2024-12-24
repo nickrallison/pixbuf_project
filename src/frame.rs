@@ -3,7 +3,7 @@
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 
 pub struct Pixel {
-    pub argb: u32
+    pub argb: u32,
 }
 
 impl crate::Pixel {
@@ -26,35 +26,38 @@ impl crate::Pixel {
     }
 }
 
-
 pub struct Frame<const W: usize, const H: usize> {
-    pixels: Vec<crate::Pixel>
+    pixels: Vec<crate::Pixel>,
 }
 
 impl<const W: usize, const H: usize> crate::Frame<W, H> {
     pub fn new() -> Self {
-        
         crate::Frame {
-            pixels: vec![crate::Pixel::new(0, 0, 0, 0); W * H]
+            pixels: vec![crate::Pixel::new(0, 0, 0, 0); W * H],
         }
     }
 
+    #[inline(always)]
     pub fn get_pixel(&self, x: usize, y: usize) -> &crate::Pixel {
         &self.pixels[y * W + x]
     }
 
+    #[inline(always)]
     pub fn get_pixel_mut(&mut self, x: usize, y: usize) -> &mut crate::Pixel {
         &mut self.pixels[y * W + x]
     }
 
+    #[inline(always)]
     pub fn set_pixel(&mut self, x: usize, y: usize, pixel: crate::Pixel) {
         self.pixels[y * W + x] = pixel;
     }
+    #[inline(always)]
     pub fn set_pixel_owned(mut self, x: usize, y: usize, pixel: crate::Pixel) -> Self {
         self.pixels[y * W + x] = pixel;
         self
     }
-    
+
+    #[inline(always)]
     pub fn get_pixels(&self) -> Vec<u32> {
         self.pixels.iter().map(|pix| pix.argb).collect()
     }

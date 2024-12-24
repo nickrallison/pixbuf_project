@@ -11,8 +11,20 @@ fn main() {
     const WIDTH: usize = 800;
     const HEIGHT: usize = 600;
 
+    const FILL_RATE: f32 = 0.01;
+    const KILL_RATE: f32 = 0.001;
+
+    const A_DIFFUSE: f32 = 0.001;
+    const B_DIFFUSE: f32 = 0.001;
+
+    const TIME_STEP: f32 = 0.1;
+
+    const SEED: u64 = 1;
+
     let mut frame = Frame::<WIDTH, HEIGHT>::new();
-    let mut loopstate = ExampleLoopState::<WIDTH, HEIGHT>::new();
+    let mut loopstate = ExampleLoopState::<WIDTH, HEIGHT>::new(
+        FILL_RATE, KILL_RATE, A_DIFFUSE, B_DIFFUSE, TIME_STEP, SEED,
+    );
     frame = loopstate.draw::<WIDTH, HEIGHT>(frame);
 
     let mut window = Window::new(
