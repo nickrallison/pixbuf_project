@@ -181,12 +181,14 @@ impl<const WIDTH: usize, const HEIGHT: usize> LoopState for ExampleLoopState<WID
     fn draw<const W: usize, const H: usize>(&self, mut frame: Frame<W, H>) -> Frame<W, H> {
         for y in 0..H {
             for x in 0..W {
-                // Get the concentration of chemical B for visualization
                 let b = self.chem_b.get_cell(x, y).unwrap_or(0.0);
+                let b_color = (b * 255.0) as u8;
+
+                let a = self.chem_a.get_cell(x, y).unwrap_or(0.0);
+                let a_color = (a * 255.0) as u8;
 
                 // Map the concentration to a grayscale value
-                let intensity = (b * 255.0) as u8;
-                let pixel = Pixel::new(intensity, intensity, intensity, 255);
+                let pixel = Pixel::new(255, a_color, 0, b_color);
                 frame.set_pixel(x, y, pixel);
             }
         }
