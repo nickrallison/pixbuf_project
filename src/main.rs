@@ -15,14 +15,16 @@ fn main() {
     const KILL_RATE: f32 = 0.062;
 
     const A_DIFFUSE: f32 = 1.0;
-    const B_DIFFUSE: f32 = 0.5;
+    const B_DIFFUSE: f32 = 0.35;
 
-    const TIME_STEP: f32 = 1.5;
+    const TIME_STEP: f32 = 1.0;
 
     const SEED: u64 = 1;
 
     let mut frame = Frame::<WIDTH, HEIGHT>::new();
-    let mut loopstate = ReactionDiffusion::new(WIDTH, HEIGHT, FILL_RATE, KILL_RATE, SEED);
+    let mut loopstate = ReactionDiffusion::new(
+        WIDTH, HEIGHT, FILL_RATE, KILL_RATE, A_DIFFUSE, B_DIFFUSE, TIME_STEP, SEED,
+    );
     frame = loopstate.draw::<WIDTH, HEIGHT>(frame);
 
     let mut window = Window::new(

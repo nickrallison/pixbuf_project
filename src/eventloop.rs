@@ -14,13 +14,22 @@ pub struct ReactionDiffusion {
     b: Vec<f32>,
     feed_rate: f32,
     kill_rate: f32,
-    diffusion_a: f32,
-    diffusion_b: f32,
+    a_diffusion: f32,
+    b_diffusion: f32,
     delta_t: f32,
 }
 
 impl ReactionDiffusion {
-    pub fn new(width: usize, height: usize, feed_rate: f32, kill_rate: f32, seed: u64) -> Self {
+    pub fn new(
+        width: usize,
+        height: usize,
+        feed_rate: f32,
+        kill_rate: f32,
+        a_diffusion: f32,
+        b_diffusion: f32,
+        delta_t: f32,
+        seed: u64,
+    ) -> Self {
         let size = width * height;
         let mut a = vec![1.0; size];
         let mut b = vec![0.0; size];
@@ -34,9 +43,9 @@ impl ReactionDiffusion {
             for x in (start_x.saturating_sub(radius))..(start_x + radius) {
                 let dx = x as isize - start_x as isize;
                 let dy = y as isize - start_y as isize;
-                // if dx * dx + dy * dy < (radius * radius) as isize {
-                b[y * width + x] = 1.0;
-                // }
+                if dx * dx + dy * dy < (radius * radius) as isize {
+                    b[y * width + x] = 1.0;
+                }
             }
         }
 
@@ -47,9 +56,9 @@ impl ReactionDiffusion {
             b,
             feed_rate,
             kill_rate,
-            diffusion_a: 1.0,
-            diffusion_b: 0.5,
-            delta_t: 1.0,
+            a_diffusion,
+            b_diffusion,
+            delta_t,
         }
     }
 
@@ -94,10 +103,10 @@ impl LoopState for ReactionDiffusion {
                 let laplacian_b = self.laplacian(&self.b, x, y);
 
                 new_a[index] = a
-                    + (self.diffusion_a * laplacian_a - reaction + self.feed_rate * (1.0 - a))
+                    + (self.a_diffusion * laplacian_a - reaction + self.feed_rate * (1.0 - a))
                         * self.delta_t;
                 new_b[index] = b
-                    + (self.diffusion_b * laplacian_b + reaction
+                    + (self.b_diffusion * laplacian_b + reaction
                         - (self.kill_rate + self.feed_rate) * b)
                         * self.delta_t;
             }
