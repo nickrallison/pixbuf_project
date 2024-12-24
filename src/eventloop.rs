@@ -1,4 +1,6 @@
 use crate::frame::{Frame, Pixel};
+use rand::prelude::StdRng;
+use rand::{Rng, SeedableRng};
 
 pub trait LoopState {
     fn update(self) -> Self;
@@ -18,22 +20,23 @@ pub struct ReactionDiffusion {
 }
 
 impl ReactionDiffusion {
-    pub fn new(width: usize, height: usize, feed_rate: f32, kill_rate: f32) -> Self {
+    pub fn new(width: usize, height: usize, feed_rate: f32, kill_rate: f32, seed: u64) -> Self {
         let size = width * height;
         let mut a = vec![1.0; size];
         let mut b = vec![0.0; size];
 
         // Initialize a small area with B=1
-        let center_x = width / 2;
-        let center_y = height / 2;
+        let mut rng = StdRng::seed_from_u64(seed);
+        let start_x = rng.random_range(0..width);
+        let start_y = rng.random_range(0..height);
         let radius = 10;
-        for y in (center_y.saturating_sub(radius))..(center_y + radius) {
-            for x in (center_x.saturating_sub(radius))..(center_x + radius) {
-                let dx = x as isize - center_x as isize;
-                let dy = y as isize - center_y as isize;
-                if dx * dx + dy * dy < (radius * radius) as isize {
-                    b[y * width + x] = 1.0;
-                }
+        for y in (start_y.saturating_sub(radius))..(start_y + radius) {
+            for x in (start_x.saturating_sub(radius))..(start_x + radius) {
+                let dx = x as isize - start_x as isize;
+                let dy = y as isize - start_y as isize;
+                // if dx * dx + dy * dy < (radius * radius) as isize {
+                b[y * width + x] = 1.0;
+                // }
             }
         }
 
@@ -114,7 +117,7 @@ impl LoopState for ReactionDiffusion {
                 let a = self.a[index];
                 let b = self.b[index];
 
-                let color_value = ((1.0 - a) * 255.0) as u8;
+                let color_value = ((1.0 - b) * 255.0) as u8;
                 let pixel = Pixel::new(255, color_value, color_value, color_value);
                 frame.set_pixel(x, y, pixel);
             }
