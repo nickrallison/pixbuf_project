@@ -33,10 +33,10 @@ pub struct Frame<const W: usize, const H: usize> {
 
 impl<const W: usize, const H: usize> crate::Frame<W, H> {
     pub fn new() -> Self {
-        let frame = crate::Frame {
+        
+        crate::Frame {
             pixels: vec![crate::Pixel::new(0, 0, 0, 0); W * H]
-        };
-        frame
+        }
     }
 
     pub fn get_pixel(&self, x: usize, y: usize) -> &crate::Pixel {
