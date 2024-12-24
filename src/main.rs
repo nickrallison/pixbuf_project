@@ -11,13 +11,13 @@ fn main() {
     const WIDTH: usize = 800;
     const HEIGHT: usize = 600;
 
-    const FILL_RATE: f32 = 0.01;
-    const KILL_RATE: f32 = 0.001;
+    const FILL_RATE: f32 = 0.055;
+    const KILL_RATE: f32 = 0.062;
 
-    const A_DIFFUSE: f32 = 0.001;
-    const B_DIFFUSE: f32 = 0.001;
+    const A_DIFFUSE: f32 = 1.0;
+    const B_DIFFUSE: f32 = 0.5;
 
-    const TIME_STEP: f32 = 0.1;
+    const TIME_STEP: f32 = 10.0;
 
     const SEED: u64 = 1;
 

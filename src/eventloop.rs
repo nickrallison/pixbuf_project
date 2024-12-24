@@ -38,36 +38,43 @@ impl<const W: usize, const H: usize> Field<W, H> {
         let mut sum = 0.0;
 
         if x < W && y < H {
-            // Center cell with weight -4
-            sum += self.get_cell(x, y).unwrap_or(0.0) * -4.0;
-
-            let mut weight = 0;
-            // Neighbors with weight 1
-            // if let Some(value) = self.get_cell(x  - 1, y) {
-            //     sum += value;
-            //     weight += 1;
-            // }
+            let mut weight: f32 = 0.0;
             if x != 0 {
-                sum += self.get_cell(x - 1, y).unwrap_or(0.0) * 1.0;
-                weight += 1;
+                sum += self.get_cell(x - 1, y).unwrap_or(0.0) * 0.2;
+                weight += -0.2;
             }
             if let Some(value) = self.get_cell(x + 1, y) {
-                sum += value;
-                weight += 1;
+                sum += value * 0.2;
+                weight += -0.2;
             }
-            // if let Some(value) = self.get_cell(x, y - 1) {
-            //     sum += value;
-            //     weight += 1;
-            // }
             if y != 0 {
-                sum += self.get_cell(x, y - 1).unwrap_or(0.0) * 1.0;
-                weight += 1;
+                sum += self.get_cell(x, y - 1).unwrap_or(0.0) * 0.2;
+                weight += -0.2;
             }
             if let Some(value) = self.get_cell(x, y + 1) {
-                sum += value;
-                weight += 1;
+                sum += value * 0.2;
+                weight += -0.2;
             }
-            sum += self.get_cell(x, y).unwrap_or(0.0) * -(weight as f32);
+
+            if x != 0 && y != 0 {
+                sum += self.get_cell(x - 1, y - 1).unwrap_or(0.0) * 0.05;
+                weight += -0.05;
+            }
+            if x != 0 && y != H - 1 {
+                sum += self.get_cell(x - 1, y + 1).unwrap_or(0.0) * 0.05;
+                weight += -0.05;
+            }
+
+            if x != W - 1 && y != 0 {
+                sum += self.get_cell(x + 1, y - 1).unwrap_or(0.0) * 0.05;
+                weight += -0.05;
+            }
+            if x != W - 1 && y != H - 1 {
+                sum += self.get_cell(x + 1, y + 1).unwrap_or(0.0) * 0.05;
+                weight += -0.05;
+            }
+
+            sum += self.get_cell(x, y).unwrap_or(0.0) * weight;
             Some(sum)
         } else {
             None
@@ -101,10 +108,19 @@ impl<const W: usize, const H: usize> ExampleLoopState<W, H> {
     ) -> Self {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let mut chem_a = Field::<W, H>::new();
-        chem_a.cells.fill_with(|| rng.gen_range(0.0..1.0));
+        chem_a.cells.fill_with(|| 1.0);
 
         let mut chem_b = Field::<W, H>::new();
-        chem_b.cells.fill_with(|| rng.gen_range(0.0..1.0));
+        chem_b.cells.fill_with(|| 0.0);
+
+        // find a random cell in B and set it and neightbours to 1.0
+        let (x, y) = (rng.gen_range(0..W), rng.gen_range(0..H));
+
+        chem_b.set_cell(x, y, 1.0);
+        chem_b.set_cell(x - 1, y, 1.0);
+        chem_b.set_cell(x + 1, y, 1.0);
+        chem_b.set_cell(x, y - 1, 1.0);
+        chem_b.set_cell(x, y + 1, 1.0);
 
         Self {
             feed_rate,
@@ -125,11 +141,6 @@ impl<const W: usize, const H: usize> ExampleLoopState<W, H> {
 
 impl<const WIDTH: usize, const HEIGHT: usize> LoopState for ExampleLoopState<WIDTH, HEIGHT> {
     fn update(mut self) -> Self {
-        // Constants for the Gray-Scott model
-        let d_a = 1.0; // Diffusion rate for chemical A
-        let d_b = 0.5; // Diffusion rate for chemical B
-        let delta_t = 1.0; // Time step
-
         // Temporary fields to store the updated concentrations
         let mut new_chem_a = Field::<WIDTH, HEIGHT>::new();
         let mut new_chem_b = Field::<WIDTH, HEIGHT>::new();
