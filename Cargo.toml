@@ -1,12 +1,10 @@
 [package]
-name = "display_project"
+name = "reaction_diffusion_visualizer"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-chrono = "0.4.39"
 minifb = "0.27.0"
-rand = "0.9.0-beta.1"
 rayon = "1.10.0"
 
 [profile.release]
