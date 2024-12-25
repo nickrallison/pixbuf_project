@@ -6,24 +6,32 @@ pub trait LoopState {
     fn draw<const W: usize, const H: usize>(&self, frame: Frame<W, H>) -> Frame<W, H>;
 }
 
-pub struct ReactionDiffusion {
+pub struct ReactionDiffusion<F, K>
+where
+    F: Fn(f32, f32) -> f32 + Send + Sync,
+    K: Fn(f32, f32) -> f32 + Send + Sync,
+{
     width: usize,
     height: usize,
     a: Vec<f32>,
     b: Vec<f32>,
-    feed_rate: f32,
-    kill_rate: f32,
+    feed_rate: F,
+    kill_rate: K,
     a_diffusion: f32,
     b_diffusion: f32,
     delta_t: f32,
 }
 
-impl ReactionDiffusion {
+impl<F, K> ReactionDiffusion<F, K>
+where
+    F: Fn(f32, f32) -> f32 + Send + Sync,
+    K: Fn(f32, f32) -> f32 + Send + Sync,
+{
     pub fn new(
         width: usize,
         height: usize,
-        feed_rate: f32,
-        kill_rate: f32,
+        feed_rate: F,
+        kill_rate: K,
         a_diffusion: f32,
         b_diffusion: f32,
         delta_t: f32,
@@ -81,14 +89,15 @@ impl ReactionDiffusion {
             let ny = (y as isize + dy).clamp(0, (self.height - 1) as isize) as usize;
             sum += grid[ny * self.width + nx] * weight;
         }
-
         sum
     }
 }
 
-use rayon::prelude::*;
-
-impl LoopState for ReactionDiffusion {
+impl<F, K> LoopState for ReactionDiffusion<F, K>
+where
+    F: Fn(f32, f32) -> f32 + Send + Sync,
+    K: Fn(f32, f32) -> f32 + Send + Sync,
+{
     fn update(self) -> Self {
         let mut new_a = self.a.clone();
         let mut new_b = self.b.clone();
@@ -97,11 +106,8 @@ impl LoopState for ReactionDiffusion {
         let height = self.height;
         let a_diffusion = self.a_diffusion;
         let b_diffusion = self.b_diffusion;
-        let feed_rate = self.feed_rate;
-        let kill_rate = self.kill_rate;
         let delta_t = self.delta_t;
 
-        // Create a range of indices and parallelize over it
         new_a
             .par_iter_mut()
             .zip(new_b.par_iter_mut())
@@ -111,9 +117,17 @@ impl LoopState for ReactionDiffusion {
                 let y = index / width;
                 let a = self.a[index];
                 let b = self.b[index];
+
+                // Normalize x and y for feed_rate and kill_rate functions
+                let nx = x as f32 / width as f32;
+                let ny = y as f32 / height as f32;
+
                 let reaction = a * b * b;
                 let laplacian_a = self.laplacian(&self.a, x, y);
                 let laplacian_b = self.laplacian(&self.b, x, y);
+
+                let feed_rate = (self.feed_rate)(nx, ny);
+                let kill_rate = (self.kill_rate)(nx, ny);
 
                 *new_a_val =
                     a + (a_diffusion * laplacian_a - reaction + feed_rate * (1.0 - a)) * delta_t;
@@ -131,7 +145,6 @@ impl LoopState for ReactionDiffusion {
 
     fn draw<const W: usize, const H: usize>(&self, mut frame: Frame<W, H>) -> Frame<W, H> {
         let width = self.width;
-
         frame
             .pixels
             .par_iter_mut()
@@ -142,7 +155,6 @@ impl LoopState for ReactionDiffusion {
                 let color_value = ((1.0 - b) * 255.0) as u8;
                 *pixel = Pixel::new(255, color_value, color_value, color_value);
             });
-
         frame
     }
 }

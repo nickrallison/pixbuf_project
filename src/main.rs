@@ -11,8 +11,18 @@ fn main() {
     const WIDTH: usize = 800;
     const HEIGHT: usize = 600;
 
-    const FILL_RATE: f32 = 0.065;
-    const KILL_RATE: f32 = 0.061;
+    const FILL_RATE: fn(f32, f32) -> f32 = |x, y| {
+        let x_center = 0.5;
+        let y_center = 0.5;
+        let r2 = (x - x_center).powf(2.) + (y - y_center).powf(2.);
+        let r = r2.sqrt();
+
+        let r_max = 0.07;
+        let r_min = 0.02;
+
+        r_min + (r_max - r_min) * 2. * r
+    };
+    const KILL_RATE: fn(f32, f32) -> f32 = |x, y| 0.061;
 
     const A_DIFFUSE: f32 = 1.0;
     const B_DIFFUSE: f32 = 0.40;
