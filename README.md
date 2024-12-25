@@ -2,6 +2,10 @@
 
 Welcome to the **Reaction Diffusion Visualizer**! This project is a Rust-based implementation of a reaction-diffusion simulation, visually representing the fascinating patterns that can emerge from this mathematical model. Inspired by concepts presented in [this YouTube video](https://www.youtube.com/watch?v=BV9ny785UNc) by Primer, this application leverages the computational power of modern CPUs to create mesmerizing real-time visualizations.
 
+## Demo
+
+https://github.com/user-attachments/assets/dd8eeaa4-c10e-4705-ab9e-5be0cac243a9
+
 ## Overview
 
 Reaction-diffusion systems model processes involving chemical substances and can produce complex patterns resembling those found in nature, such as zebra stripes or leopard spots. This project simulates such systems, providing an interactive canvas for exploring these emergent patterns.
